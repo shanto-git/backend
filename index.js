@@ -1,3 +1,4 @@
+const { MongoClient, ServerApiVersion } = require('mongodb');
 const express = require('express');
 const cors = require ('cors');
 require('dotenv').config();
@@ -7,8 +8,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const admin = require("firebase-admin");
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const serviceAccount = JSON.parse(decoded);
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 const uri = "mongodb+srv://backend11:VOA8iQxWQP8lYYB7@cluster0.o6mocqo.mongodb.net/?appName=Cluster0";
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -33,7 +40,7 @@ async function run() {
     app.post('/users', async(req, res)=>{
       const userInfo = req.body;
       userInfo.createdAt = new Date();
-
+      userInfo.role = 'donor'
       const result = await usersCollection.insertOne(userInfo);
       if (!result) return res.status(404).send({ message: "User not found" });
       res.send(result)
@@ -50,6 +57,14 @@ async function run() {
       const data = req.body;
       data.createdAt = new Date();
       const result = await requestCollection.insertOne(data);
+      res.send(result)
+    })
+
+    app.get('/volunteer/requests/:email', async(req,res)=>{
+      const email= req.params.email;
+      const query ={VolunteerEmail:email};
+
+      const result = await requestCollection.find(query).toArray();
       res.send(result)
     })
 
