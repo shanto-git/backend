@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require ('cors');
 require('dotenv').config();
-const port= process.env.PORT || 3000 ;
+const port= process.env.PORT || 5000 ;
 
 const app = express();
 app.use(cors());
@@ -28,13 +28,14 @@ async function run() {
 
     const database = client.db('bloodDonationDB')
     const usersCollection = database.collection('users');
+    const requestCollection = database.collection('request');
 
     app.post('/users', async(req, res)=>{
       const userInfo = req.body;
-      userInfo.role = "buyer";
       userInfo.createdAt = new Date();
 
       const result = await usersCollection.insertOne(userInfo);
+      if (!result) return res.status(404).send({ message: "User not found" });
       res.send(result)
     });
 
@@ -42,6 +43,13 @@ async function run() {
       const {email} = req.params
       const query = {email:email}
       const result = await usersCollection.findOne(query)
+      res.send(result)
+    })
+
+    app.post('/requests',async(req, res)=>{
+      const data = req.body;
+      data.createdAt = new Date();
+      const result = await requestCollection.insertOne(data);
       res.send(result)
     })
 
