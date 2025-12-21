@@ -142,7 +142,7 @@ async function run() {
         },
       };
       const result = await requestCollection.updateOne(filter, updatedDoc);
-      console.log(result)
+      console.log(result);
       res.send(result);
     });
 
@@ -157,6 +157,30 @@ async function run() {
       const result = await requestCollection.deleteOne(query);
       res.send(result);
     });
+
+    app.get("/users/role/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      res.send(user);
+    });
+
+    app.put('/users/role/:email',async (req, res) => {
+  const email = req.params.email;
+  const filter = { email: email };
+  const updatedUser = req.body;
+
+  const updateDoc = {
+    $set: {
+      name: updatedUser.name,
+      bloodGroup: updatedUser.bloodGroup,
+      district: updatedUser.district,
+      upazila: updatedUser.upazila,
+    },
+  }
+  const result = await usersCollection.updateOne(filter, updateDoc);
+    res.send(result);
+})
 
     await client.db("admin").command({ ping: 1 });
     console.log(
