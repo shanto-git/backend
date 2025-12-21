@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const cors = require ('cors');
 require('dotenv').config();
@@ -118,12 +118,25 @@ async function run() {
       res.send(result)
     })
 
+    app.get('/pending-requests', async(req,res)=>{
+      const query ={status:"pending"};
+      const result = await requestCollection.find(query).toArray()
+      res.send(result)
+    })
+
+    app.get('/donation-request/:id', async(req,res)=>{
+      const is = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await requestCollection.findOne(query)
+      res.send(result)
+    })
+
     app.get('/all-donation-requests',verifyFBToken, async(req,res)=>{
       const result = await requestCollection.find().toArray();
       res.send(result);
     })
 
-    app.delete('/all-donation-requests/:email', async(req,res)=>{
+    app.delete('/all-donation-requests/:id', async(req,res)=>{
       const email = req.params.email;
       const query = {requesterEmail:email};
       const result = await requestCollection.deleteOne(query)
