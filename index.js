@@ -118,6 +118,18 @@ async function run() {
       res.send(result)
     })
 
+    app.get('/all-donation-requests',verifyFBToken, async(req,res)=>{
+      const result = await requestCollection.find().toArray();
+      res.send(result);
+    })
+
+    app.delete('/all-donation-requests/:email', async(req,res)=>{
+      const email = req.params.email;
+      const query = {requesterEmail:email};
+      const result = await requestCollection.deleteOne(query)
+      res.send(result)
+    })
+
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
