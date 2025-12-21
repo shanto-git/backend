@@ -3,6 +3,8 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.STRIPE_SECRATE);
+const crypto = require("crypto");
 
 const app = express();
 app.use(cors());
@@ -59,6 +61,7 @@ async function run() {
     const database = client.db("bloodDonationDB");
     const usersCollection = database.collection("users");
     const requestCollection = database.collection("request");
+    const paymentCollection = database.collection("payment");
 
     app.post("/users", async (req, res) => {
       const userInfo = req.body;
@@ -109,9 +112,9 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/volunteer/requests/:email", async (req, res) => {
+    app.get("/my-requests/:email", async (req, res) => {
       const email = req.params.email;
-      const query = { VolunteerEmail: email };
+      const query = { requesterEmail: email };
 
       const result = await requestCollection.find(query).toArray();
       res.send(result);
@@ -165,22 +168,111 @@ async function run() {
       res.send(user);
     });
 
-    app.put('/users/role/:email',async (req, res) => {
-  const email = req.params.email;
-  const filter = { email: email };
-  const updatedUser = req.body;
+    app.put("/users/role/:email", async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const updatedUser = req.body;
 
-  const updateDoc = {
-    $set: {
-      name: updatedUser.name,
-      bloodGroup: updatedUser.bloodGroup,
-      district: updatedUser.district,
-      upazila: updatedUser.upazila,
-    },
-  }
-  const result = await usersCollection.updateOne(filter, updateDoc);
+      const updateDoc = {
+        $set: {
+          name: updatedUser.name,
+          bloodGroup: updatedUser.bloodGroup,
+          district: updatedUser.district,
+          upazila: updatedUser.upazila,
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.post("/create-payment-checkout", async (req, res) => {
+      const information = req.body;
+      const amount = parseInt(information.donateAmount) * 100;
+
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              unit_amount: amount,
+              product_data: {
+                name: "please donate",
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        metadata: {
+          donorName: information?.donorName,
+        },
+        customer_email: information.donorEmail,
+        success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/payment-cancelled`,
+      });
+      res.send({ url: session.url });
+    });
+
+    app.post("/payment-success", async (req, res) => {
+      const { session_id } = req.query;
+      const session = await stripe.checkout.sessions.retrieve(session_id);
+      const transactionId = session.payment_intent;
+
+      const isPaymentExist = await paymentCollection.findOne({ transactionId });
+      if (isPaymentExist) {
+        return;
+      }
+
+      if (session.payment_status == "paid") {
+        const paymentInfo = {
+          amount: session.amount_total / 100,
+          currency: session.currency,
+          donorEmail: session.customer_email,
+          userName: session.customer_details?.name,
+          transactionId,
+          payment_status: session.payment_status,
+          paidAt: new Date(),
+        };
+
+        const result = await paymentCollection.insertOne(paymentInfo);
+        return res.send(result);
+      }
+    });
+
+    app.get("/all-payments", async (req, res) => {
+      const result = await paymentCollection
+        .find()
+        .sort({ paidAt: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/total-funding", async (req, res) => {
+      const payments = await paymentCollection.find().toArray();
+      const total = payments.reduce(
+        (sum, payment) => sum + (payment.amount || 0),
+        0
+      );
+      const totalFunding = payments.length;
+
+      res.send({
+        total,
+        totalFunding,
+      });
+    });
+
+    app.get('/search', async (req, res) => {
+    const { bloodGroup, district, upazila } = req.query;
+
+    let query = {};
+
+    if (bloodGroup) query.bloodGroup = bloodGroup;
+    if (district) query.district = district;
+    if (upazila) query.upazila = upazila;
+
+    const result = await userCollection.find(query).toArray();
     res.send(result);
-})
+});
 
     await client.db("admin").command({ ping: 1 });
     console.log(
