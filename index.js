@@ -41,7 +41,7 @@ const verifyFBToken = async (req, res, next) => {
 };
 
 const uri =
-  "mongodb+srv://backend11:VOA8iQxWQP8lYYB7@cluster0.o6mocqo.mongodb.net/?appName=Cluster0";
+  "mongodb+srv://USER_NAME:PASSWORD@cluster0.o6mocqo.mongodb.net/?appName=Cluster0";
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
