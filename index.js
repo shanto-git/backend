@@ -41,7 +41,7 @@ const verifyFBToken = async (req, res, next) => {
 };
 
 const uri =
-  "mongodb+srv://USER_NAME:PASSWORD@cluster0.o6mocqo.mongodb.net/?appName=Cluster0";
+  `mongodb+srv://${process.env.USER_NAME}:${process.env.PASSWORD}@cluster0.o6mocqo.mongodb.net/?appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -55,7 +55,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
 
     const database = client.db("bloodDonationDB");
@@ -274,7 +274,7 @@ async function run() {
     res.send(result);
 });
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
